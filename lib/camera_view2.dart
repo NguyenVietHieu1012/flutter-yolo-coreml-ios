@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
-// import 'package:ultralytics_yolo/yolo_view.dart';
 
 class CameraView extends StatefulWidget {
   const CameraView({super.key});
@@ -10,13 +9,16 @@ class CameraView extends StatefulWidget {
 }
 
 class _CameraViewState extends State<CameraView> {
-
   bool _single = false;
   List<YOLOResult> _results = [];
 
-  Map<String, int> _stableCount = {};     // đếm số frame liên tiếp
-  List<YOLOResult> _stableResults = [];   // kết quả đã đủ 8 frames
+  Map<String, int> _stableCount = {};
+  List<YOLOResult> _stableResults = [];
   final int _threshold = 8;
+
+  // DEBUG: lưu kích thước view camera
+  Size? _previewSize;
+  Size? _widgetSize;
 
   @override
   Widget build(BuildContext context) {
@@ -35,153 +37,101 @@ class _CameraViewState extends State<CameraView> {
               const Text('Multi'),
             ],
           ),
+
+          ///
+          /// LAYOUT BUILDER - debug kích thước widget camera
+          ///
           Expanded(
-            child: Stack(
-              children: [
-                YOLOView(
-                  modelPath: 'yolo11s_test',
-                  task: YOLOTask.detect,
-                  showOverlays: false,
-                  onResult: (res) {
-                    if (res.isEmpty) {
-                      print('DEBUG: result empty');
-                    } else {
-                      final r = res.first;
-                      print('===== DEBUG YOLO RESULT START =====');
-                      print('runtimeType: ${r.runtimeType}');
-                      print('toString(): $r');
+            child: LayoutBuilder(builder: (context, constraints) {
+              _widgetSize = Size(constraints.maxWidth, constraints.maxHeight);
 
-                      // danh sách thuộc tính thử đọc
-                      final keys = [
-                        'bbox',
-                        'boundingBox',
-                        'rect',
-                        'x',
-                        'y',
-                        'w',
-                        'h',
-                        'x1',
-                        'y1',
-                        'x2',
-                        'y2',
-                        'left',
-                        'top',
-                        'right',
-                        'bottom',
-                        'className',
-                        'label',
-                        'confidence',
-                        'score'
-                      ];
+              return Stack(
+                children: [
+                  YOLOView(
+                    modelPath: 'yolo11s_test',
+                    task: YOLOTask.detect,
+                    showOverlays: false,
+                    onResult: (res) {
+                      ///
+                      /// DEBUG: Hiện số lượng object detect mỗi frame
+                      ///
+                      print('DEBUG: detected count = ${res.length}');
 
-                      for (final key in keys) {
-                        try {
-                          final val = (r as dynamic).__getProperty(key);
-                          // __getProperty là giả định; sẽ ném. Thay bằng truy cập trực tiếp theo key bên dưới.
-                        } catch (_) {
-                          // fallback: thử truy cập trực tiếp (dùng dynamic). Nếu không tồn tại, sẽ ném và bị catch.
+                      if (_widgetSize != null) {
+                        print('DEBUG widgetSize: $_widgetSize');
+                      }
+
+                      if (res.isNotEmpty) {
+                        final r = res.first;
+
+                        print('===== DEBUG YOLO RAW RESULT START =====');
+                        print('class: ${r.className}');
+                        print('confidence: ${r.confidence}');
+                        print('boundingBox raw: ${r.boundingBox}');
+                        print('left=${r.boundingBox.left}, top=${r.boundingBox.top},'
+                            ' right=${r.boundingBox.right}, bottom=${r.boundingBox.bottom}');
+                        print('===== DEBUG YOLO RAW RESULT END =====');
+                      }
+
+                      ///
+                      /// Lỗi Invalid image dimensions (nếu boundingBox = 0)
+                      ///
+                      if (res.isNotEmpty) {
+                        final bb = res.first.boundingBox;
+                        if (bb.width <= 0 || bb.height <= 0) {
+                          print('ERROR: Invalid bounding box dimensions: '
+                              'w=${bb.width}, h=${bb.height}');
+                        }
+                      }
+
+                      ///
+                      /// SINGLE MODE: giữ lại object ổn định 8 frames
+                      ///
+                      if (_single && res.isNotEmpty) {
+                        final sorted = List.of(res)
+                          ..sort((a, b) => b.confidence.compareTo(a.confidence));
+                        final target = sorted.first;
+                        final key = target.className;
+
+                        _stableCount[key] = (_stableCount[key] ?? 0) + 1;
+
+                        for (final k in _stableCount.keys.toList()) {
+                          if (k != key) _stableCount[k] = 0;
                         }
 
-                        // Thử đọc trực tiếp bằng dynamic access cho từng key
-                        try {
-                          final dynamic val = (r as dynamic).bbox; // mặc định thử bbox
-                          print('bbox (direct): $val');
-                        } catch (_) {}
-                        try {
-                          final dynamic val = (r as dynamic).boundingBox;
-                          print('boundingBox (direct): $val');
-                        } catch (_) {}
-                        try {
-                          final dynamic val = (r as dynamic).rect;
-                          print('rect (direct): $val');
-                        } catch (_) {}
+                        if (_stableCount[key]! >= _threshold) {
+                          _stableResults = [target];
+                        } else {
+                          _stableResults = [];
+                        }
 
-                        // các trường số/label
-                        try { print('className: ${(r as dynamic).className}'); } catch (_) {}
-                        try { print('label: ${(r as dynamic).label}'); } catch (_) {}
-                        try { print('confidence: ${(r as dynamic).confidence}'); } catch (_) {}
-                        try { print('score: ${(r as dynamic).score}'); } catch (_) {}
-
-                        // các toạ độ x/y/w/h / x1/y1/x2/y2 / left/top/right/bottom
-                        // try { print('x: ${(r as dynamic).x}'); } catch (_) {}
-                        // try { print('y: ${(r as dynamic).y}'); } catch (_) {}
-                        // try { print('w: ${(r as dynamic).w}'); } catch (_) {}
-                        // try { print('h: ${(r as dynamic).h}'); } catch (_) {}
-                        //
-                        // try { print('x1: ${(r as dynamic).x1}'); } catch (_) {}
-                        // try { print('y1: ${(r as dynamic).y1}'); } catch (_) {}
-                        // try { print('x2: ${(r as dynamic).x2}'); } catch (_) {}
-                        // try { print('y2: ${(r as dynamic).y2}'); } catch (_) {}
-                        //
-                        // try { print('left: ${(r as dynamic).left}'); } catch (_) {}
-                        // try { print('top: ${(r as dynamic).top}'); } catch (_) {}
-                        // try { print('right: ${(r as dynamic).right}'); } catch (_) {}
-                        // try { print('bottom: ${(r as dynamic).bottom}'); } catch (_) {}
-                        //
-                        // // Nếu có một list/array bbox như [x,y,w,h] hoặc [x1,y1,x2,y2]
-                        // try {
-                        //   final dynamic b = (r as dynamic).bbox;
-                        //   if (b is List) print('bbox list: $b');
-                        // } catch (_) {}
-                        // try {
-                        //   final dynamic bb = (r as dynamic).boundingBox;
-                        //   if (bb is List) print('boundingBox list: $bb');
-                        // } catch (_) {}
-
-                        // Nếu có nested Rect-like object (flutter Rect), in ra các trường nếu có
-                        try {
-                          final dynamic bb = (r as dynamic).boundingBox;
-                          try { print('bb.left: ${bb.left}'); } catch (_) {}
-                          try { print('bb.top: ${bb.top}'); } catch (_) {}
-                          try { print('bb.width: ${bb.width}'); } catch (_) {}
-                          try { print('bb.height: ${bb.height}'); } catch (_) {}
-                        } catch (_) {}
+                        setState(() => _results = _stableResults);
+                        return;
                       }
 
-                      print('===== DEBUG YOLO RESULT END =====');
-                    }
-
-                    // ==== SINGLE MODE WITH 8-FRAMES-STABILITY ====
-                    if (_single && res.isNotEmpty) {
-                      // chọn object có confidence cao nhất
-                      final sorted = List.of(res)
-                        ..sort((a, b) => b.confidence.compareTo(a.confidence));
-                      final target = sorted.first;
-
-                      final key = target.className; // hoặc dùng target.className + tọa độ
-
-                      // tăng bộ đếm
-                      _stableCount[key] = (_stableCount[key] ?? 0) + 1;
-
-                      // reset các key khác
-                      for (final k in _stableCount.keys.toList()) {
-                        if (k != key) _stableCount[k] = 0;
-                      }
-
-                      // nếu >=8 frames liên tục → giữ lại kết quả để Painter vẽ
-                      if (_stableCount[key]! >= _threshold) {
-                        _stableResults = [target];
-                      } else {
-                        _stableResults = [];
-                      }
-
-                      setState(() => _results = _stableResults);
-                      return;
-                    }
-
-                    // ==== MULTI MODE bình thường ====
-                    setState(() => _results = res);
-
-                  },
-                ),
-                IgnorePointer(
-                  child: CustomPaint(
-                    painter: _DetectionPainter(_results),
-                    size: Size.infinite,
+                      ///
+                      /// MULTI MODE
+                      ///
+                      setState(() => _results = res);
+                    },
                   ),
-                ),
-              ],
-            ),
+
+                  ///
+                  /// Custom Painter
+                  ///
+                  IgnorePointer(
+                    child: CustomPaint(
+                      painter: _DetectionPainter(
+                        _results,
+                        widgetSize: _widgetSize,
+                        onDebug: (msg) => print(msg), // callback debug
+                      ),
+                      size: Size.infinite,
+                    ),
+                  ),
+                ],
+              );
+            }),
           ),
         ],
       ),
@@ -192,21 +142,40 @@ class _CameraViewState extends State<CameraView> {
 class _DetectionPainter extends CustomPainter {
   final List<YOLOResult> results;
 
-  _DetectionPainter(this.results);
+  final Size? widgetSize;
+
+  final void Function(String msg)? onDebug;
+
+  _DetectionPainter(
+      this.results, {
+        required this.widgetSize,
+        this.onDebug,
+      });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (results.isEmpty) return;
+    if (widgetSize == null) return;
 
-    // boundingBox pixel tuyệt đối
     final bb = results.first.boundingBox;
 
-    // Suy ra size của frame gốc YOLO
-    final frameWidth = bb.right;   // giá trị pixel max
-    final frameHeight = bb.bottom; // giá trị pixel max
+    final frameWidth = bb.right;
+    final frameHeight = bb.bottom;
 
-    final scaleX = size.width / frameWidth;
-    final scaleY = size.height / frameHeight;
+    if (onDebug != null) {
+      onDebug!(
+        'DEBUG: frameWidth=$frameWidth, frameHeight=$frameHeight, '
+            'widgetWidth=${widgetSize!.width}, widgetHeight=${widgetSize!.height}',
+      );
+    }
+
+    final scaleX = widgetSize!.width / frameWidth;
+    final scaleY = widgetSize!.height / frameHeight;
+
+    if (onDebug != null) {
+      onDebug!(
+          'DEBUG scale: scaleX=$scaleX, scaleY=$scaleY -> applied to all rects');
+    }
 
     final paint = Paint()
       ..color = const Color.fromARGB(255, 255, 0, 0)
@@ -215,6 +184,9 @@ class _DetectionPainter extends CustomPainter {
 
     final tp = TextPainter(textDirection: TextDirection.ltr);
 
+    ///
+    /// Vẽ bounding boxes
+    ///
     for (final r in results) {
       final bb = r.boundingBox;
 
@@ -227,18 +199,20 @@ class _DetectionPainter extends CustomPainter {
 
       canvas.drawRect(rect, paint);
 
-      final label =
-          '${r.className} ${(r.confidence * 100).toStringAsFixed(1)}%';
-
       tp.text = TextSpan(
-          text: label, style: const TextStyle(color: Colors.red, fontSize: 14));
+        text: '${r.className} ${(r.confidence * 100).toStringAsFixed(1)}%',
+        style: const TextStyle(color: Colors.red, fontSize: 14),
+      );
       tp.layout();
-
       tp.paint(canvas, Offset(rect.left, rect.top - 18));
+
+      if (onDebug != null) {
+        onDebug!(
+            'DRAW RECT: raw=($bb), scaled=($rect), class=${r.className}, conf=${r.confidence}');
+      }
     }
   }
 
   @override
   bool shouldRepaint(_) => true;
 }
-
