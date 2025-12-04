@@ -16,6 +16,9 @@ class _CameraViewState extends State<CameraView> {
   bool _single = false;
   List<YOLOResult> _results = [];
 
+  int _cropCount = 0;
+  final int _cropLimit = 3;
+
   final Map<String, int> _stableCount = {};
   List<YOLOResult> _stableResults = [];
   final int _threshold = 8;
@@ -95,34 +98,87 @@ class _CameraViewState extends State<CameraView> {
     setState(() => _results = res);
   }
 
+  bool _isProcessing = false;
+
   // ===================== CAPTURE + CROP + SAVE =====================
   Future<void> _handleCaptureAndSave(YOLOResult target) async {
+
+    if (_cropCount >= _cropLimit) {
+      print("Reached crop limit ($_cropLimit). Skip crop.");
+      return;
+    }
+
+    if (_isProcessing) return;    // CHẶN GỌI SONG SONG
+    _isProcessing = true;
+
     try {
       final boundary = _cameraPreviewKey.currentContext?.findRenderObject()
       as RenderRepaintBoundary?;
 
-      if (boundary == null) return;
+      if (boundary == null) {
+        _isProcessing = false;
+        return;
+      }
 
-      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-      final ByteData? bytes =
-      await image.toByteData(format: ui.ImageByteFormat.png);
+      // pixelRatio = 1.0 để boundaryImage == UI thực tế (tránh scale sai)
+      final ui.Image boundaryImage =
+      await boundary.toImage(pixelRatio: 1.0);
 
-      if (bytes == null) return;
+      final ByteData? boundaryBytes =
+      await boundaryImage.toByteData(format: ui.ImageByteFormat.png);
 
-      final Uint8List fullImage = bytes.buffer.asUint8List();
+      if (boundaryBytes == null) {
+        _isProcessing = false;
+        return;
+      }
+
+      final Uint8List fullImage =
+      boundaryBytes.buffer.asUint8List();
+
+      // YOLO input = 320x320
+      const double origW = 320;
+      const double origH = 320;
+
+      final double viewW = boundary.size.width;
+      final double viewH = boundary.size.height;
+
+      // SCALE YOLO → UI
+      final scaleX = viewW / origW;
+      final scaleY = viewH / origH;
 
       final bb = target.boundingBox;
-      final double w = boundary.size.width;
-      final double h = boundary.size.height;
 
-      final Rect cropRect = Rect.fromLTRB(
-        bb.left.clamp(0, w),
-        bb.top.clamp(0, h),
-        bb.right.clamp(0, w),
-        bb.bottom.clamp(0, h),
+      final Rect cropRectUI = Rect.fromLTRB(
+        bb.left * scaleX,
+        bb.top * scaleY,
+        bb.right * scaleX,
+        bb.bottom * scaleY,
       );
 
-      final Uint8List cropped = await _cropImage(fullImage, cropRect);
+      // SCALE UI → ẢNH THẬT
+      final scaleToImgX = boundaryImage.width / viewW;
+      final scaleToImgY = boundaryImage.height / viewH;
+
+      Rect cropRect = Rect.fromLTRB(
+        cropRectUI.left * scaleToImgX,
+        cropRectUI.top * scaleToImgY,
+        cropRectUI.right * scaleToImgX,
+        cropRectUI.bottom * scaleToImgY,
+      );
+
+      // ==== CLAMP ĐỂ TRÁNH VƯỢT BIÊN → ẢNH TRẮNG ====
+      cropRect = Rect.fromLTRB(
+        cropRect.left.clamp(0, boundaryImage.width.toDouble()),
+        cropRect.top.clamp(0, boundaryImage.height.toDouble()),
+        cropRect.right.clamp(0, boundaryImage.width.toDouble()),
+        cropRect.bottom.clamp(0, boundaryImage.height.toDouble()),
+      );
+
+      print("IMG: ${boundaryImage.width}x${boundaryImage.height}");
+      print("cropRect REAL: $cropRect");
+
+      // Crop
+      final Uint8List cropped = await _cropImage(boundaryImage, cropRect);
 
       await ImageGallerySaver.saveImage(
         cropped,
@@ -130,27 +186,31 @@ class _CameraViewState extends State<CameraView> {
         name: "yolo_crop_${DateTime.now().millisecondsSinceEpoch}",
       );
 
-      print("Saved crop.");
+      _cropCount++;
+      print("Crop saved: $_cropCount/$_cropLimit");
+
     } catch (e) {
       print("Error saving crop: $e");
     }
+
+    _isProcessing = false;
   }
 
   // ===================== CROP FUNCTION =====================
-  Future<Uint8List> _cropImage(Uint8List bytes, Rect region) async {
-    final ui.Codec codec = await ui.instantiateImageCodec(bytes);
-    final ui.FrameInfo frame = await codec.getNextFrame();
-    final ui.Image original = frame.image;
-
+  Future<Uint8List> _cropImage(ui.Image sourceImage, Rect region) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
-    canvas.drawImageRect(
-      original,
-      region,
-      Rect.fromLTWH(0, 0, region.width, region.height),
-      Paint(),
+    final src = Rect.fromLTWH(
+      region.left,
+      region.top,
+      region.width,
+      region.height,
     );
+
+    final dst = Rect.fromLTWH(0, 0, region.width, region.height);
+
+    canvas.drawImageRect(sourceImage, src, dst, Paint());
 
     final ui.Image cropped = await recorder
         .endRecording()
