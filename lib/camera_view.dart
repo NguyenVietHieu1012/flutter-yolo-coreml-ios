@@ -63,15 +63,27 @@ class _CameraViewState extends State<CameraView> {
     _isCapturing = true;
 
     try {
+      debugPrint("[CAPTURE] Prepare: hiding bounding boxes");
+      await _controller.setShowOverlays(false);
+
+      // Cho camera update lại khung nhìn
+      await Future.delayed(const Duration(milliseconds: 120));
+
       debugPrint("[CAPTURE] Taking frame...");
       final Uint8List? bytes = await _controller.captureFrame();
 
       if (bytes != null) {
         await _saveToGallery(bytes);
+        debugPrint("[CAPTURE] Frame saved");
       } else {
         debugPrint("[CAPTURE] ERROR: captureFrame() returned NULL");
       }
 
+      // Bật overlay lại
+      debugPrint("[CAPTURE] Restoring bounding boxes");
+      await _controller.setShowOverlays(true);
+
+      // Tuỳ theo logic của bạn có thể giữ hoặc bỏ bước này
       await _restartCamera();
 
     } catch (e) {
@@ -80,6 +92,7 @@ class _CameraViewState extends State<CameraView> {
       _isCapturing = false;
     }
   }
+
 
   // ================= ON RESULT CALLBACK =================
   Future<void> _onResult(List<YOLOResult> results) async {
