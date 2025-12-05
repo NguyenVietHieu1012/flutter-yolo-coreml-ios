@@ -1,7 +1,10 @@
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
+import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 
 class CameraView extends StatefulWidget {
   const CameraView({super.key});
@@ -11,82 +14,124 @@ class CameraView extends StatefulWidget {
 }
 
 class _CameraViewState extends State<CameraView> {
+  // ================= YOLO CONTROL =================
+  final YOLOViewController _controller = YOLOViewController();
+  bool _showYolo = true;
+  bool _isCapturing = false;
+
+  // ================= STABLE DETECTION TIMER =================
   final Map<String, DateTime> _firstSeen = {};
   final Duration _requiredDuration = const Duration(seconds: 3);
 
+  // ================= FORMATTING =================
   String _formatTime(DateTime t) {
-    final h = t.hour.toString().padLeft(2, '0');
-    final m = t.minute.toString().padLeft(2, '0');
-    final s = t.second.toString().padLeft(2, '0');
-    final d = t.day.toString().padLeft(2, '0');
-    final mo = t.month.toString().padLeft(2, '0');
-    final y = t.year.toString();
-    return '$h:$m:$s - $d/$mo/$y';
+    return "${t.hour.toString().padLeft(2, '0')}:"
+        "${t.minute.toString().padLeft(2, '0')}:"
+        "${t.second.toString().padLeft(2, '0')} - "
+        "${t.day.toString().padLeft(2, '0')}/"
+        "${t.month.toString().padLeft(2, '0')}/"
+        "${t.year}";
   }
 
-  // ====== GHI LOG VÀO FILE ======
+  // ================= LOGGING =================
   Future<void> _appendLogToFile(String text) async {
     final dir = await getApplicationDocumentsDirectory();
-    final filePath = '${dir.path}/logs.txt';
-    final file = File(filePath);
+    final path = '${dir.path}/logs.txt';
+    final file = File(path);
 
-    // Ghi file
     await file.writeAsString('$text\n', mode: FileMode.append);
-
-    // In ra đường dẫn
-    debugPrint('LOG FILE PATH: $filePath');
+    debugPrint("LOG => $text");
+    debugPrint("LOG PATH: $path");
   }
 
+  // ================= SAVE IMAGE =================
+  Future<void> _saveToGallery(Uint8List bytes) async {
+    await ImageGallerySaver.saveImage(bytes);
+    debugPrint("[SAVE] Saved to gallery");
+  }
+
+  // ================= RESTART CAMERA VIEW =================
+  Future<void> _restartCamera() async {
+    setState(() => _showYolo = false);
+    await Future.delayed(const Duration(milliseconds: 150));
+    setState(() => _showYolo = true);
+  }
+
+  // ================= CAPTURE LOGIC =================
+  Future<void> _capture(YOLOResult r) async {
+    if (_isCapturing) return;
+    _isCapturing = true;
+
+    try {
+      debugPrint("[CAPTURE] Taking frame...");
+      final Uint8List? bytes = await _controller.captureFrame();
+
+      if (bytes != null) {
+        await _saveToGallery(bytes);
+      } else {
+        debugPrint("[CAPTURE] ERROR: captureFrame() returned NULL");
+      }
+
+      await _restartCamera();
+
+    } catch (e) {
+      debugPrint("[CAPTURE] ERROR => $e");
+    } finally {
+      _isCapturing = false;
+    }
+  }
+
+  // ================= ON RESULT CALLBACK =================
+  Future<void> _onResult(List<YOLOResult> results) async {
+    final now = DateTime.now();
+
+    final filtered = results.where((r) => r.confidence >= 0.90).toList();
+    final visibleClasses = filtered.map((e) => e.className).toSet();
+
+    _firstSeen.removeWhere((cls, _) => !visibleClasses.contains(cls));
+
+    for (final r in filtered) {
+      final cls = r.className;
+
+      _firstSeen.putIfAbsent(cls, () => now);
+      final duration = now.difference(_firstSeen[cls]!);
+
+      if (duration >= _requiredDuration) {
+        final box = r.boundingBox;
+
+        final log =
+            "[DETECTED] ${_formatTime(now)} | $cls "
+            "conf=${(r.confidence * 100).toStringAsFixed(1)}% "
+            "[L=${box.left.toStringAsFixed(2)}, "
+            "T=${box.top.toStringAsFixed(2)}, "
+            "R=${box.right.toStringAsFixed(2)}, "
+            "B=${box.bottom.toStringAsFixed(2)}]";
+
+        debugPrint(log);
+        await _appendLogToFile(log);
+
+        _firstSeen[cls] = now;
+
+        await _capture(r);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('YOLO Demo')),
-      body: YOLOView(
+      appBar: AppBar(title: const Text("YOLO Demo")),
+      body: _showYolo
+          ? YOLOView(
         modelPath: 'yolo11s_test4',
         task: YOLOTask.detect,
-        onResult: (results) async {
-          final now = DateTime.now();
-
-          final filtered =
-          results.where((r) => r.confidence >= 0.90).toList();
-
-          final currentClasses = <String>{};
-          for (final r in filtered) {
-            currentClasses.add(r.className);
-          }
-
-          _firstSeen.removeWhere((cls, _) => !currentClasses.contains(cls));
-
-          for (final r in filtered) {
-            final cls = r.className;
-            final box = r.boundingBox;
-
-            _firstSeen.putIfAbsent(cls, () => now);
-
-            final duration = now.difference(_firstSeen[cls]!);
-
-            if (duration >= _requiredDuration) {
-              final ts = _formatTime(now);
-
-              final log =
-                  '[DETECTED] $ts | $cls '
-                  'conf=${(r.confidence * 100).toStringAsFixed(1)}% '
-                  'box: L=${box.left.toStringAsFixed(2)}, '
-                  'T=${box.top.toStringAsFixed(2)}, '
-                  'R=${box.right.toStringAsFixed(2)}, '
-                  'B=${box.bottom.toStringAsFixed(2)}';
-
-              debugPrint(log);
-
-              await _appendLogToFile(log);
-
-              // Optional: reset tránh in liên tục
-              _firstSeen[cls] = now;
-            }
-          }
-        },
-      ),
+        controller: _controller,
+        confidenceThreshold: 0.5,
+        onResult: _onResult,
+        showOverlays: true,
+        useGpu: true,
+      )
+          : const SizedBox(),
     );
   }
 }

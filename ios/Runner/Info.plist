@@ -59,5 +59,8 @@
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>App cần quyền để lưu ảnh vào bộ sưu tập</string>
 
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Access photo library</string>
+
 </dict>
 </plist>
