@@ -23,7 +23,8 @@ class _CameraViewState extends State<CameraView> {
   List<YOLOResult>? _lastResults;
   DateTime? _sceneStableSince;
   final Duration _sceneStableDuration = const Duration(seconds: 5);
-  final double _movementThreshold = 5.0; // pixel threshold
+  final double _movementThreshold = 5.0; // pixel
+  double _stabilityProgress = 0.0; // 0.0 → 1.0
 
   // ================= STABLE DETECTION TIMER =================
   final Map<String, DateTime> _firstSeen = {};
@@ -51,7 +52,6 @@ class _CameraViewState extends State<CameraView> {
   // ================= SAVE IMAGE =================
   Future<void> _saveToGallery(Uint8List bytes) async {
     await ImageGallerySaver.saveImage(bytes);
-    debugPrint("[SAVE] Saved to gallery");
   }
 
   // ================= RESTART CAMERA VIEW =================
@@ -108,8 +108,6 @@ class _CameraViewState extends State<CameraView> {
   // ================= ON RESULT CALLBACK =================
   Future<void> _onResult(List<YOLOResult> results) async {
     final now = DateTime.now();
-
-    // Lọc confidence
     final filtered = results.where((r) => r.confidence >= 0.90).toList();
 
     // ===== PHASE 1: SCENE STABILITY (5s) =====
@@ -118,14 +116,25 @@ class _CameraViewState extends State<CameraView> {
       _sceneStableSince ??= now;
     } else {
       _sceneStableSince = null;
+      _stabilityProgress = 0.0;
     }
 
     _lastResults = filtered;
 
-    // Nếu scene chưa đứng yên đủ 5s → reset detect timer
+    if (_sceneStableSince != null) {
+      final elapsed = now.difference(_sceneStableSince!);
+      _stabilityProgress =
+          (elapsed.inMilliseconds / _sceneStableDuration.inMilliseconds)
+              .clamp(0.0, 1.0);
+    } else {
+      _stabilityProgress = 0.0;
+    }
+
+    // Chưa đủ ổn định → reset detect
     if (_sceneStableSince == null ||
         now.difference(_sceneStableSince!) < _sceneStableDuration) {
       _firstSeen.clear();
+      setState(() {});
       return;
     }
 
@@ -152,7 +161,9 @@ class _CameraViewState extends State<CameraView> {
         await _appendLogToFile(log);
 
         _firstSeen[cls] = now;
-        _sceneStableSince = null; // reset scene stability
+        _sceneStableSince = null;
+        _stabilityProgress = 0.0;
+        setState(() {});
         await _capture(r);
       }
     }
@@ -162,17 +173,64 @@ class _CameraViewState extends State<CameraView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("YOLO Demo")),
-      body: _showYolo
-          ? YOLOView(
-        modelPath: 'yolo11s_test4',
-        task: YOLOTask.detect,
-        controller: _controller,
-        confidenceThreshold: 0.5,
-        onResult: _onResult,
-        showOverlays: true,
-        useGpu: true,
-      )
-          : const SizedBox(),
+      body: Stack(
+        children: [
+          _showYolo
+              ? YOLOView(
+            modelPath: 'yolo11s_test4',
+            task: YOLOTask.detect,
+            controller: _controller,
+            confidenceThreshold: 0.5,
+            onResult: _onResult,
+            showOverlays: true,
+            useGpu: true,
+          )
+              : const SizedBox(),
+
+          // ================= STABILITY PROGRESS OVERLAY =================
+          Positioned(
+            top: 16,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.45),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "SCENE STABILITY",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: _stabilityProgress,
+                      minHeight: 10,
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _stabilityProgress < 0.4
+                            ? Colors.red
+                            : _stabilityProgress < 0.8
+                            ? Colors.orange
+                            : Colors.green,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
