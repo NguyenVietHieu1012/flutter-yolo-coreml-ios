@@ -22,13 +22,13 @@ class _CameraViewState extends State<CameraView> {
   // ================= SCENE STABILITY =================
   List<YOLOResult>? _lastResults;
   DateTime? _sceneStableSince;
-  final Duration _sceneStableDuration = const Duration(seconds: 5);
+  final Duration _sceneStableDuration = const Duration(seconds: 5); // Điều chỉnh thời gian nhận diện vật thể đứng yên ở đây
   final double _movementThreshold = 5.0; // pixel
   double _stabilityProgress = 0.0; // 0.0 → 1.0
 
   // ================= STABLE DETECTION TIMER =================
   final Map<String, DateTime> _firstSeen = {};
-  final Duration _requiredDuration = const Duration(seconds: 3);
+  final Duration _requiredDuration = const Duration(seconds: 3); // Điều chỉnh thời gian nhận diện vật thể liên tục trong x giây ở đây
 
   // ================= FORMATTING =================
   String _formatTime(DateTime t) {
@@ -108,7 +108,7 @@ class _CameraViewState extends State<CameraView> {
   // ================= ON RESULT CALLBACK =================
   Future<void> _onResult(List<YOLOResult> results) async {
     final now = DateTime.now();
-    final filtered = results.where((r) => r.confidence >= 0.90).toList();
+    final filtered = results.where((r) => r.confidence >= 0.90).toList(); // Điểu chỉnh % confident object ở đây
 
     // ===== PHASE 1: SCENE STABILITY (5s) =====
     if (_lastResults != null &&
