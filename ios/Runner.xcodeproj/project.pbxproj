@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		26CEBE8E2F0B6E76007EA469 /* yolov8s_trained_duskin_dataset2_50_epochs_640_imgsz.mlpackage in Resources */ = {isa = PBXBuildFile; fileRef = 26CEBE8C2F0B6E20007EA469 /* yolov8s_trained_duskin_dataset2_50_epochs_640_imgsz.mlpackage */; };
+		26DD6FBD2F1645A3007EF7C4 /* yolov8s_trained_duskin_dataset_81_epochs_640_imgsz.mlpackage in Resources */ = {isa = PBXBuildFile; fileRef = 26DD6FBB2F16458D007EF7C4 /* yolov8s_trained_duskin_dataset_81_epochs_640_imgsz.mlpackage */; };
 		2F39E7DD2ED83FEA00908AAF /* Model.mlpackage in Resources */ = {isa = PBXBuildFile; fileRef = 2F39E7DB2ED83FB800908AAF /* Model.mlpackage */; };
 		2F39E7E32ED8430000908AAF /* yolo11s_test.mlpackage in Resources */ = {isa = PBXBuildFile; fileRef = 2F39E7E12ED842F600908AAF /* yolo11s_test.mlpackage */; };
 		2F39E7E52ED9852C00908AAF /* yolo11s_test.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 2F39E7E42ED9852C00908AAF /* yolo11s_test.mlmodelc */; };
@@ -51,6 +53,9 @@
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		23475E8419ECABDC4340F8C8 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		26CEBE8C2F0B6E20007EA469 /* yolov8s_trained_duskin_dataset2_50_epochs_640_imgsz.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = yolov8s_trained_duskin_dataset2_50_epochs_640_imgsz.mlpackage; sourceTree = "<group>"; };
+		26DD6FB92F164473007EF7C4 /* yolov8l-cls-trained-balanced-datasets.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = "yolov8l-cls-trained-balanced-datasets.mlpackage"; sourceTree = "<group>"; };
+		26DD6FBB2F16458D007EF7C4 /* yolov8s_trained_duskin_dataset_81_epochs_640_imgsz.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = yolov8s_trained_duskin_dataset_81_epochs_640_imgsz.mlpackage; sourceTree = "<group>"; };
 		2F39E7DB2ED83FB800908AAF /* Model.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = Model.mlpackage; sourceTree = "<group>"; };
 		2F39E7E12ED842F600908AAF /* yolo11s_test.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = yolo11s_test.mlpackage; sourceTree = "<group>"; };
 		2F39E7E42ED9852C00908AAF /* yolo11s_test.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = yolo11s_test.mlmodelc; sourceTree = "<group>"; };
@@ -145,6 +150,9 @@
 				2F39E7E42ED9852C00908AAF /* yolo11s_test.mlmodelc */,
 				2F6E29312EDD4ABF00A82CD3 /* yolo11s_test2.mlpackage */,
 				2F6E29392EDD4D0400A82CD3 /* yolo11s_test4.mlpackage */,
+				26CEBE8C2F0B6E20007EA469 /* yolov8s_trained_duskin_dataset2_50_epochs_640_imgsz.mlpackage */,
+				26DD6FB92F164473007EF7C4 /* yolov8l-cls-trained-balanced-datasets.mlpackage */,
+				26DD6FBB2F16458D007EF7C4 /* yolov8s_trained_duskin_dataset_81_epochs_640_imgsz.mlpackage */,
 			);
 			sourceTree = "<group>";
 		};
@@ -277,6 +285,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				26DD6FBD2F1645A3007EF7C4 /* yolov8s_trained_duskin_dataset_81_epochs_640_imgsz.mlpackage in Resources */,
+				26CEBE8E2F0B6E76007EA469 /* yolov8s_trained_duskin_dataset2_50_epochs_640_imgsz.mlpackage in Resources */,
 				2F6E293B2EDD4D1700A82CD3 /* yolo11s_test4.mlpackage in Resources */,
 				2F6E29332EDD4AFB00A82CD3 /* yolo11s_test2.mlpackage in Resources */,
 				2F39E7E52ED9852C00908AAF /* yolo11s_test.mlmodelc in Resources */,
@@ -300,9 +310,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -333,9 +347,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

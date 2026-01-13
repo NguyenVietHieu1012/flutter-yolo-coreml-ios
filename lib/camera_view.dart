@@ -145,6 +145,7 @@ class _CameraViewState extends State<CameraView> {
       debugPrint("[CAPTURE ERROR] $e");
       _pauseDetection = false;
     } finally {
+      await _controller.setShowOverlays(true); // ⭐
       _isCapturing = false;
     }
   }
@@ -155,15 +156,26 @@ class _CameraViewState extends State<CameraView> {
 
     final now = DateTime.now();
     final filtered = results.where((r) => r.confidence >= 0.9).toList();
+    final bestResult = _getHighestConfidence(filtered);
 
-    if (_lastResults != null && _isSceneStable(filtered, _lastResults!)) {
+    if (bestResult == null) {
+      _lastResults = null;
+      _sceneStableSince = null;
+      _stabilityProgress = 0.0;
+      setState(() {});
+      return;
+    }
+
+    final singleResult = [bestResult];
+
+    if (_lastResults != null && _isSceneStable(singleResult, _lastResults!)) {
       _sceneStableSince ??= now;
     } else {
       _sceneStableSince = null;
       _stabilityProgress = 0.0;
     }
 
-    _lastResults = filtered;
+    _lastResults = singleResult;
 
     if (_sceneStableSince != null) {
       final elapsed = now.difference(_sceneStableSince!);
@@ -179,17 +191,23 @@ class _CameraViewState extends State<CameraView> {
       return;
     }
 
-    for (final r in filtered) {
-      _firstSeen.putIfAbsent(r.className, () => now);
+    final r = bestResult;
+    _firstSeen.putIfAbsent(r.className, () => now);
 
-      if (now.difference(_firstSeen[r.className]!) >= _requiredDuration) {
-        _firstSeen.clear();
-        _sceneStableSince = null;
-        _stabilityProgress = 0.0;
-        await _capture(r);
-        break;
-      }
+    if (now.difference(_firstSeen[r.className]!) >= _requiredDuration) {
+      _firstSeen.clear();
+      _sceneStableSince = null;
+      _stabilityProgress = 0.0;
+      await _capture(r);
     }
+  }
+
+  // ======================================
+  YOLOResult? _getHighestConfidence(List<YOLOResult> results) {
+    if (results.isEmpty) return null;
+
+    results.sort((a, b) => b.confidence.compareTo(a.confidence));
+    return results.first;
   }
 
   // ================= UI =================
@@ -200,7 +218,7 @@ class _CameraViewState extends State<CameraView> {
       body: Stack(
         children: [
           YOLOView(
-            modelPath: 'yolo11s_test4',
+            modelPath: 'yolov8s_trained_duskin_dataset_81_epochs_640_imgsz',
             task: YOLOTask.detect,
             controller: _controller,
             confidenceThreshold: 0.5,
@@ -245,13 +263,17 @@ class _CameraViewState extends State<CameraView> {
           if (_showResultOverlay)
             Positioned.fill(
               child: GestureDetector(
-                onTap: () {
+                onTap: () async {
                   setState(() {
                     _showResultOverlay = false;
                     _apiResult = null;
                     _apiConfidence = null;
                     _pauseDetection = false;
                   });
+
+                  // ⭐ FIX QUAN TRỌNG
+                  await Future.delayed(const Duration(milliseconds: 50));
+                  await _controller.setShowOverlays(true);
                 },
                 child: Container(
                   color: Colors.black.withOpacity(0.75),
