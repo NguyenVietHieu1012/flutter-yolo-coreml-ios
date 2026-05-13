@@ -53,16 +53,34 @@ class _CameraViewState extends State<CameraView> {
   }
 
   // ================= UPLOAD TO API =================
+  ///
+  /// Sends image and bounding box info to the API and receives classification result (Sterilized/Unsterilized).
+  ///
+  /// **Request payload:**
+  /// - **image** (multipart file): Captured frame from camera, JPEG format.
+  /// - **imageId** (string): Random 7-char ID (a-z, 0-9) to identify the image.
+  /// - **timestamp** (string): Send time in ISO 8601 (e.g. 2025-03-09T10:30:00.000).
+  /// - **user** (string): User identifier (currently hardcoded 'test_user').
+  /// - **boundingBoxes** (JSON string): Array of bounding boxes [left, top, right, bottom] (pixel coordinates).
+  ///   Example: "[[100.5, 200.3, 350.2, 480.1]]" for one object.
+  ///
+  /// **Response (JSON):**
+  /// - **results** (array): List of classification results, each item contains:
+  ///   - **result** (string): Classification label, e.g. "Sterilized" | "Unsterilized" | "Undefined".
+  ///   - **confidence** (number): Confidence score 0.0–1.0.
+  /// - Other fields may be returned by the API depending on backend.
+  ///
   Future<Map<String, dynamic>> uploadToApi({
     required Uint8List imageBytes,
     required List<List<double>> boundingBoxes,
   }) async {
     final uri = Uri.parse(
-      "http://10.0.64.77:60475/api/v1/sterilization/analyze",
+      "http://link_your_api_url",
     );
 
     final request = http.MultipartRequest('POST', uri);
 
+    // Request: image file
     request.files.add(
       http.MultipartFile.fromBytes(
         'image',
@@ -72,6 +90,7 @@ class _CameraViewState extends State<CameraView> {
       ),
     );
 
+    // Request: form fields
     request.fields['imageId'] = generateImageId();
     request.fields['timestamp'] = DateTime.now().toIso8601String();
     request.fields['user'] = 'test_user';
@@ -86,6 +105,7 @@ class _CameraViewState extends State<CameraView> {
     }
 
     debugPrint("UPLOAD SUCCESS => $body");
+    // Response body is JSON parsed to Map with key "results" (array of { result, confidence }).
     return jsonDecode(body);
   }
 
@@ -126,6 +146,7 @@ class _CameraViewState extends State<CameraView> {
 
       final box = r.boundingBox;
 
+      // Send to API: image bytes + one bounding box [left, top, right, bottom]
       final response = await uploadToApi(
         imageBytes: bytes,
         boundingBoxes: [
@@ -133,9 +154,12 @@ class _CameraViewState extends State<CameraView> {
         ],
       );
 
+      // Response: response['results'] is an array; we use the first item.
+      // resultObj contains: { "result": "Sterilized"|"Unsterilized"|..., "confidence": 0.0-1.0 }
       final resultObj = response['results']?[0];
 
       setState(() {
+        // Display API result: result (label), confidence
         _apiResult = resultObj?['result'] ?? 'Undefined';
         _apiConfidence =
             (resultObj?['confidence'] as num?)?.toDouble();
@@ -145,7 +169,7 @@ class _CameraViewState extends State<CameraView> {
       debugPrint("[CAPTURE ERROR] $e");
       _pauseDetection = false;
     } finally {
-      await _controller.setShowOverlays(true); // ⭐
+      await _controller.setShowOverlays(true); // Show overlays again
       _isCapturing = false;
     }
   }
@@ -218,7 +242,7 @@ class _CameraViewState extends State<CameraView> {
       body: Stack(
         children: [
           YOLOView(
-            modelPath: 'yolov8s_trained_duskin_dataset_81_epochs_640_imgsz',
+            modelPath: 'name_your_model', // Example: yolov8s (not yolov8s.mlpackage)
             task: YOLOTask.detect,
             controller: _controller,
             confidenceThreshold: 0.5,
@@ -271,7 +295,6 @@ class _CameraViewState extends State<CameraView> {
                     _pauseDetection = false;
                   });
 
-                  // ⭐ FIX QUAN TRỌNG
                   await Future.delayed(const Duration(milliseconds: 50));
                   await _controller.setShowOverlays(true);
                 },
