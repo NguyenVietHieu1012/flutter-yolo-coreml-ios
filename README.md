@@ -1,50 +1,50 @@
-# Hướng dẫn tích hợp YOLO CoreML vào Flutter (iOS)
+# Guide to integrating YOLO CoreML into Flutter (iOS)
 
-# Tóm tắt
+# Summary
 
-Tài liệu này hướng dẫn từ việc export model YOLO sang CoreML, chuẩn bị `.mlpackage`, tích hợp vào project iOS (Xcode) và các bước cấu hình môi trường macOS để build và deploy ứng dụng Flutter lên iOS.
+This document guides the process from exporting a YOLO model to CoreML, preparing a `.mlpackage`, integrating it into an iOS project (Xcode), and the macOS environment configuration steps required to build and deploy a Flutter app to iOS.
 
-## 1. Export model từ Ultralytics
+## 1. Export model from Ultralytics
 
-Sử dụng câu lệnh:
+Use the command:
 
 ```python
 model.export(format="coreml", nms=True)
 ```
 
-- `nms=True` dành cho các model dạng detection.
+- `nms=True` is for detection-type models.
 
-## 2. Chuẩn bị file CoreML (.mlpackage)
+## 2. Prepare the CoreML file (.mlpackage)
 
-1. Tải model xuất ra từ Ultralytics.
-2. Nếu model là thư mục, đổi đuôi thành `.mlpackage`.
-3. Đưa model lên Drive hoặc tải trực tiếp về macOS.
-4. Giải nén nếu cần.
+1. Download the model exported from Ultralytics.
+2. If the model is a folder, rename the extension to `.mlpackage`.
+3. Upload the model to Drive or download it directly to macOS.
+4. Unzip if necessary.
 
-## 3. Thêm model vào Xcode
+## 3. Add the model to Xcode
 
-1. Mở Xcode → mở project `Runner`.
-2. Kéo file `.mlpackage` từ Finder vào Runner → chọn **Finish**.
-3. Nhấn vào biểu tượng Runner (Target).
-4. Vào **Build Phases**:
-   - **Compile Sources** → xóa model `.mlpackage` nếu nó được liệt kê ở đây.
-   - **Copy Bundle Resources** → thêm model `.mlpackage`.
+1. Open Xcode → open the `Runner` project.
+2. Drag the `.mlpackage` file from Finder into Runner → select **Finish**.
+3. Click the Runner (Target) icon.
+4. Go to **Build Phases**:
+   - **Compile Sources** → remove the `.mlpackage` model if it is listed here.
+   - **Copy Bundle Resources** → add the `.mlpackage` model.
 
 ---
 
-## Cấu trúc thư mục và thành phần quan trọng
+## Project structure and important components
 
 ### lib/
 
-Chứa mã nguồn chính của ứng dụng Flutter.
+Contains the main source code of the Flutter application.
 
 ### pubspec.yaml
 
-Khai báo dependencies, assets, SDK constraints. Tra cứu package: https://pub.dev/
+Declares dependencies, assets, SDK constraints. Search packages at: [https://pub.dev/](https://pub.dev/)
 
 ### ios/Runner/Info.plist
 
-Cấu hình quyền camera, lưu ảnh và cấu hình CoreML.
+Configuration for camera permissions, saving images, and CoreML settings.
 
 ### iOS Minimum Version
 
@@ -53,15 +53,15 @@ Cấu hình quyền camera, lưu ảnh và cấu hình CoreML.
 
 ### ios/Runner.xcodeproj & ios/Runner.xcworkspace
 
-Dùng để mở dự án iOS trong Xcode.
+Used to open the iOS project in Xcode.
 
 ---
 
-## Tham khảo dự án mẫu YOLO Flutter
+## Sample YOLO Flutter project reference
 
-https://github.com/ultralytics/yolo-flutter-app/tree/main/lib
+[https://github.com/ultralytics/yolo-flutter-app/tree/main/lib](https://github.com/ultralytics/yolo-flutter-app/tree/main/lib)
 
-Các file cần tham khảo:
+Files to reference:
 
 - `yolo_view.dart`
 - `yolo_task.dart`
@@ -69,134 +69,134 @@ Các file cần tham khảo:
 
 ---
 
-# Cài đặt môi trường Flutter để build iOS (macOS)
+# Setting up the Flutter environment to build iOS (macOS)
 
-Phần này tóm tắt các bước cần thiết trên macOS (Apple Silicon / Intel). Thực hiện tuần tự các bước sau.
+This section summarizes the necessary steps on macOS (Apple Silicon / Intel). Perform the steps in order.
 
-## A. Chuẩn bị: tải Flutter SDK (Apple Silicon)
+## A. Preparation: download the Flutter SDK (Apple Silicon)
 
-1. Truy cập: https://docs.flutter.dev/install/manual và tải **flutter_macos_arm64** (nếu dùng máy Apple Silicon) hoặc phiên bản macOS tương ứng.
-2. Giải nén và di chuyển vào thư mục người dùng:
+1. Visit: [https://docs.flutter.dev/install/manual](https://docs.flutter.dev/install/manual) and download **flutter_macos_arm64** (if using Apple Silicon) or the corresponding macOS version.
+2. Extract and move into the user directory:
 
 ```bash
-# ví dụ file tải về có tên flutter_macos_arm64.tar.xz
+# example downloaded file name: flutter_macos_arm64.tar.xz
 tar -xvf flutter_macos_arm64.tar.xz
-# di chuyển thư mục flutter vào $HOME
+# move the flutter directory to $HOME
 mv flutter "$HOME/flutter"
 ```
 
-3. Thêm Flutter vào PATH :
+3. Add Flutter to PATH:
 
 ```bash
 echo 'export PATH="$HOME/flutter/bin:$PATH"' >> ~/.zprofile
 source ~/.zprofile
 ```
 
-4. Kiểm tra:
+4. Check:
 
 ```bash
 flutter --version
 flutter doctor
 ```
 
-## B. Android SDK command-line tools (nếu cần build Android hoặc chạy các lệnh SDK)
+## B. Android SDK command-line tools (if you need to build Android or run SDK commands)
 
-Mở Android Studio → **Settings** (Preferences) → **Languages & Frameworks** → **Android SDK** → tab **SDK Tools** → tick **Android SDK Command-line Tools (latest)** → Apply → OK.
+Open Android Studio → **Settings** (Preferences) → **Languages & Frameworks** → **Android SDK** → **SDK Tools** tab → tick **Android SDK Command-line Tools (latest)** → Apply → OK.
 
-Sau khi cài đặt, chạy:
+After installing, run:
 
 ```bash
 flutter doctor --android-licenses
 flutter doctor
 ```
 
-## C. Cài Homebrew, CocoaPods và cấu hình Xcode
+## C. Install Homebrew, CocoaPods and configure Xcode
 
-1. Cài Homebrew (nếu chưa có):
+1. Install Homebrew (if not already installed):
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-# Thiết lập môi trường brew cho shell
+# Set up brew environment for the shell
 echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
 eval "$(/opt/homebrew/bin/brew shellenv)"
 ```
 
-2. Cài CocoaPods và thiết lập:
+2. Install CocoaPods and set up:
 
 ```bash
 brew install cocoapods
 pod setup
 ```
 
-3. Chấp nhận license Xcode và chọn Xcode developer path:
+3. Accept the Xcode license and select the Xcode developer path:
 
 ```bash
 sudo xcodebuild -license accept
 sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
 ```
 
-4. Nếu cần chạy lệnh liên quan tới signing hoặc building, đảm bảo bạn đã mở Xcode ít nhất một lần để cài thêm components.
+4. If you need to run commands related to signing or building, ensure you have opened Xcode at least once to install additional components.
 
-## D. Tải công cụ và trình duyệt cần thiết
+## D. Download required tools and browsers
 
-- Tải Google Chrome cho macOS (nếu cần để test WebView hoặc debug web content).
-- Tải iOS Simulator (phiên bản simulator tương ứng) trong Xcode → Preferences → Components. Chọn phiên bản runtime/simulator bạn cần (ví dụ iOS 16.x/17.x tùy target).
-- Ở đây tôi dùng IOS simulator 26.2
+- Download Google Chrome for macOS (if needed to test WebView or debug web content).
+- Download the iOS Simulator (corresponding simulator versions) in Xcode → Preferences → Components. Choose the runtime/simulator version you need (e.g., iOS 16.x/17.x depending on target).
+- Here I use iOS simulator 26.2
 
-## 4. Tải dependencies Flutter
+## 4. Fetch Flutter dependencies
 
 ```bash
 cd <project_root>
 flutter pub get
 ```
 
-## 5. Build & chạy ứng dụng trên iOS
+## 5. Build & run the app on iOS
 
 ```bash
-# build và chạy trên simulator hoặc thiết bị
+# build and run on simulator or device
 flutter run
-# hoặc build ipa
+# or build ipa
 flutter build ipa
 ```
 
 ---
 
-# Thao tác khi đổi thiết bị deploy hoặc triển khai trên thiết bị iOS mới
+# Actions when changing the deployment device or deploying to a new iOS device
 
-Thực hiện các bước sau khi đổi iPhone hoặc deploy app trên thiết bị iOS chưa từng sử dụng:
+Perform the following steps when changing iPhone or deploying the app to an iOS device that has not been used before:
 
-1. **Kết nối iPhone với macOS bằng cáp**
-   - Trên iPhone chọn **Trust This Computer** → **Trust**.
+1. **Connect the iPhone to macOS via cable**
+   - On the iPhone select **Trust This Computer** → **Trust**.
 
-2. **Bật Developer Mode trên iPhone**
-   - Vào **Settings → Privacy & Security → Developer Mode**
-   - Chuyển **ON** → iPhone sẽ yêu cầu **Restart**.
+2. **Enable Developer Mode on the iPhone**
+   - Go to **Settings → Privacy & Security → Developer Mode**
+   - Turn **ON** → the iPhone will request a **Restart**.
 
-3. **Cài ứng dụng bằng Flutter**
-   - Chạy lệnh:
+3. **Install the app with Flutter**
+   - Run the command:
 
 ```bash
 flutter run
 ```
 
-4. **Tin cậy nhà phát triển (Developer App)**
-   - Trên iPhone vào: **Settings → General → VPN & Device Management**
-   - Chọn **Developer App** (Apple ID / Team)
-   - Nhấn **Trust** → **Confirm**.
+4. **Trust the Developer App**
+   - On the iPhone go to: **Settings → General → VPN & Device Management**
+   - Select **Developer App** (Apple ID / Team)
+   - Tap **Trust** → **Confirm**.
 
-Sau khi hoàn tất, ứng dụng Flutter có thể chạy bình thường trên thiết bị iOS.
-
----
-
-# Ghi chú kỹ thuật / Tips
-
-- Luôn đảm bảo `ios/Podfile` có `platform :ios, '13.0'` (hoặc cao hơn) nếu model CoreML yêu cầu.
-- Nếu gặp lỗi liên quan tới CocoaPods: thử `pod repo update` và `pod install --repo-update` trong thư mục `ios/`.
-- Nếu Xcode yêu cầu thêm toolchains hoặc components, mở Xcode và cập nhật qua Preferences → Components.
+After completion, the Flutter app can run normally on the iOS device.
 
 ---
 
-# Tham khảo
+# Technical notes / Tips
+
+- Always ensure `ios/Podfile` has `platform :ios, '13.0'` (or higher) if the CoreML model requires it.
+- If you encounter CocoaPods-related errors: try `pod repo update` and `pod install --repo-update` inside the `ios/` directory.
+- If Xcode requests additional toolchains or components, open Xcode and update via Preferences → Components.
+
+---
+
+# References
 
 - Ultralytics YOLO Flutter example: https://github.com/ultralytics/yolo-flutter-app/tree/main/lib
 - Flutter docs: https://docs.flutter.dev/
